@@ -1,0 +1,443 @@
+{% load static %}
+{% load l10n %}
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Credit Risk Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    boxShadow: {
+                        soft: "0 18px 48px rgba(15, 23, 42, 0.10)",
+                    },
+                    fontFamily: {
+                        sans: ["Inter", "ui-sans-serif", "system-ui", "Arial"],
+                    },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="h-screen overflow-hidden bg-slate-100 text-slate-900 antialiased">
+    <div class="grid h-screen grid-rows-[auto_minmax(0,1fr)_auto]">
+        <header class="z-30 border-b border-slate-200 bg-white">
+            <div class="flex min-h-16 items-center justify-between gap-4 px-4 py-3 sm:px-6">
+                <div class="min-w-0">
+                    <p class="text-xs font-bold uppercase tracking-normal text-teal-700">Three-model credit scoring</p>
+                    <h1 class="truncate text-2xl font-black tracking-normal text-slate-950">Credit Risk Lab</h1>
+                </div>
+                <div class="hidden items-center gap-3 md:flex">
+                    <span class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-600">
+                        KNN + Linear + Logistic
+                    </span>
+                    <button class="rounded-lg bg-teal-700 px-4 py-2 text-sm font-black text-white transition hover:bg-teal-800" type="button" data-page-target="prediction">
+                        Predict now
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="min-h-0 lg:grid lg:grid-cols-[280px_minmax(0,1fr)]">
+            <aside class="hidden min-h-0 border-r border-slate-200 bg-white lg:flex lg:flex-col">
+                <div class="border-b border-slate-200 p-5">
+                    <p class="text-xs font-bold uppercase tracking-normal text-slate-400">Workspace</p>
+                    <h2 class="mt-1 text-lg font-black tracking-normal text-slate-950">Dashboard</h2>
+                </div>
+
+                <nav class="min-h-0 flex-1 overflow-y-auto p-4">
+                    <div class="grid gap-6">
+                        <section>
+                            <p class="mb-2 px-3 text-xs font-black uppercase tracking-normal text-slate-400">Navigation</p>
+                            <div class="grid gap-1">
+                                <button class="nav-item rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-700 transition hover:bg-slate-100" type="button" data-page-target="overview">
+                                    Data overview
+                                </button>
+                                <button class="nav-item rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-700 transition hover:bg-slate-100" type="button" data-page-target="prediction">
+                                    Profile prediction
+                                </button>
+                                <button class="nav-item rounded-lg px-3 py-2 text-left text-sm font-bold text-slate-700 transition hover:bg-slate-100" type="button" data-page-target="analytics">
+                                    Model reports
+                                </button>
+                            </div>
+                        </section>
+
+                        <section>
+                            <p class="mb-2 px-3 text-xs font-black uppercase tracking-normal text-slate-400">Models</p>
+                            <div class="grid gap-2">
+                                <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                    <strong class="block text-sm text-slate-950">KNN</strong>
+                                    <span class="text-xs font-semibold text-slate-500">Nearest neighbors</span>
+                                </div>
+                                <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                    <strong class="block text-sm text-slate-950">Linear Regression</strong>
+                                    <span class="text-xs font-semibold text-slate-500">Classification threshold: 0.5</span>
+                                </div>
+                                <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                    <strong class="block text-sm text-slate-950">Logistic Regression</strong>
+                                    <span class="text-xs font-semibold text-slate-500">Sigmoid probability</span>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section>
+                            <p class="mb-2 px-3 text-xs font-black uppercase tracking-normal text-slate-400">Dataset</p>
+                            <div class="grid gap-2 rounded-lg border border-slate-200 bg-white p-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="text-sm font-bold text-slate-500">Samples</span>
+                                    <strong class="text-sm text-slate-950">{{ summary.total_count|default:"-" }}</strong>
+                                </div>
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="text-sm font-bold text-slate-500">Features</span>
+                                    <strong class="text-sm text-slate-950">{{ summary.feature_count|default:"11" }}</strong>
+                                </div>
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="text-sm font-bold text-slate-500">Defaults</span>
+                                    <strong class="text-sm text-red-700">{{ summary.risk_rate|floatformat:1|default:"-" }}%</strong>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </nav>
+            </aside>
+
+            <main class="grid min-h-0 grid-rows-[auto_minmax(0,1fr)]">
+                <div class="border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
+                    <div class="grid grid-cols-3 gap-2">
+                        <button class="nav-item rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700" type="button" data-page-target="overview">Overview</button>
+                        <button class="nav-item rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700" type="button" data-page-target="prediction">Predict</button>
+                        <button class="nav-item rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700" type="button" data-page-target="analytics">Reports</button>
+                    </div>
+                </div>
+
+                <div id="page-scroll" class="min-h-0 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8">
+                    {% if error %}
+                        <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+                            {{ error }}
+                        </div>
+                    {% endif %}
+
+                    <section class="page-view {% if predictions_results %}hidden{% endif %}" data-page="overview">
+                        <div class="grid gap-5">
+                            <div class="rounded-lg border border-slate-200 bg-white p-6 shadow-soft lg:p-8">
+                                <p class="text-xs font-bold uppercase tracking-normal text-teal-700">Overview</p>
+                                <h2 class="mt-2 max-w-4xl text-3xl font-black leading-tight tracking-normal text-slate-950 sm:text-5xl">
+                                    Credit-risk dashboard powered by three algorithms
+                                </h2>
+                                <p class="mt-4 max-w-3xl text-base leading-7 text-slate-600">
+                                    The interface is organized into focused pages within one application shell. The header, sidebar, and footer remain fixed while the content area scrolls.
+                                </p>
+                            </div>
+
+                            {% if summary %}
+                                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                                    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+                                        <span class="text-sm font-bold text-slate-500">Training set</span>
+                                        <strong class="mt-1 block text-3xl font-black text-slate-950">{{ summary.train_count }}</strong>
+                                    </div>
+                                    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+                                        <span class="text-sm font-bold text-slate-500">Test set</span>
+                                        <strong class="mt-1 block text-3xl font-black text-slate-950">{{ summary.test_count }}</strong>
+                                    </div>
+                                    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+                                        <span class="text-sm font-bold text-slate-500">Safe</span>
+                                        <strong class="mt-1 block text-3xl font-black text-green-700">{{ summary.safe_count }}</strong>
+                                    </div>
+                                    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+                                        <span class="text-sm font-bold text-slate-500">Defaults</span>
+                                        <strong class="mt-1 block text-3xl font-black text-red-700">{{ summary.risk_count }}</strong>
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            <div class="grid gap-5 xl:grid-cols-3">
+                                <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+                                    <p class="text-xs font-bold uppercase tracking-normal text-teal-700">Flow</p>
+                                    <h3 class="mt-1 text-xl font-black tracking-normal text-slate-950">Workflow</h3>
+                                    <div class="mt-4 grid gap-3">
+                                        <div class="rounded-lg bg-slate-50 p-3 text-sm font-semibold text-slate-600">1. Enter 11 loan-profile features</div>
+                                        <div class="rounded-lg bg-slate-50 p-3 text-sm font-semibold text-slate-600">2. Normalize input with training parameters</div>
+                                        <div class="rounded-lg bg-slate-50 p-3 text-sm font-semibold text-slate-600">3. Run all three models</div>
+                                    </div>
+                                </article>
+                                <article class="rounded-lg border border-slate-200 bg-white p-5 shadow-soft xl:col-span-2">
+                                    <p class="text-xs font-bold uppercase tracking-normal text-teal-700">Design goal</p>
+                                    <h3 class="mt-1 text-xl font-black tracking-normal text-slate-950">Keep each task focused</h3>
+                                    <p class="mt-3 text-sm leading-6 text-slate-600">
+                                        The sidebar groups navigation, models, and dataset information. Major content areas are separated into internal pages so each task remains focused.
+                                    </p>
+                                </article>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="page-view {% if not predictions_results %}hidden{% endif %}" data-page="prediction">
+                        <div class="grid gap-5 xl:grid-cols-[0.95fr_1.25fr]">
+                            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
+                                <div class="mb-5">
+                                    <p class="text-xs font-bold uppercase tracking-normal text-teal-700">Loan profile</p>
+                                    <h2 class="text-2xl font-black tracking-normal text-slate-950">Input details</h2>
+                                </div>
+
+                                <form method="POST" class="grid gap-5">
+                                    {% csrf_token %}
+                                    <div class="grid gap-4 sm:grid-cols-2">
+                                        <label class="grid gap-2">
+                                            <span class="text-sm font-bold text-slate-600">Age</span>
+                                            <input class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100" type="number" name="age" min="18" max="100" step="1" value="{{ request.POST.age }}" placeholder="VD: 30" required>
+                                        </label>
+
+                                        <label class="grid gap-2">
+                                            <span class="text-sm font-bold text-slate-600">Annual income</span>
+                                            <input class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100" type="number" name="income" min="0" step="any" value="{{ request.POST.income }}" placeholder="VD: 65000" required>
+                                        </label>
+
+                                        <label class="grid gap-2">
+                                            <span class="text-sm font-bold text-slate-600">Home ownership</span>
+                                            <select class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100" name="home_ownership" required>
+                                                <option value="RENT" {% if request.POST.home_ownership == "RENT" %}selected{% endif %}>RENT</option>
+                                                <option value="MORTGAGE" {% if request.POST.home_ownership == "MORTGAGE" %}selected{% endif %}>MORTGAGE</option>
+                                                <option value="OWN" {% if request.POST.home_ownership == "OWN" %}selected{% endif %}>OWN</option>
+                                                <option value="OTHER" {% if request.POST.home_ownership == "OTHER" %}selected{% endif %}>OTHER</option>
+                                            </select>
+                                        </label>
+
+                                        <label class="grid gap-2">
+                                            <span class="text-sm font-bold text-slate-600">Employment length</span>
+                                            <input class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100" type="number" name="emp_length" min="0" max="60" step="1" value="{{ request.POST.emp_length }}" placeholder="VD: 5" required>
+                                        </label>
+
+                                        <label class="grid gap-2">
+                                            <span class="text-sm font-bold text-slate-600">Loan purpose</span>
+                                            <select class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100" name="loan_intent" required>
+                                                <option value="PERSONAL" {% if request.POST.loan_intent == "PERSONAL" %}selected{% endif %}>PERSONAL</option>
+                                                <option value="EDUCATION" {% if request.POST.loan_intent == "EDUCATION" %}selected{% endif %}>EDUCATION</option>
+                                                <option value="MEDICAL" {% if request.POST.loan_intent == "MEDICAL" %}selected{% endif %}>MEDICAL</option>
+                                                <option value="VENTURE" {% if request.POST.loan_intent == "VENTURE" %}selected{% endif %}>VENTURE</option>
+                                                <option value="HOMEIMPROVEMENT" {% if request.POST.loan_intent == "HOMEIMPROVEMENT" %}selected{% endif %}>HOMEIMPROVEMENT</option>
+                                                <option value="DEBTCONSOLIDATION" {% if request.POST.loan_intent == "DEBTCONSOLIDATION" %}selected{% endif %}>DEBTCONSOLIDATION</option>
+                                            </select>
+                                        </label>
+
+                                        <label class="grid gap-2">
+                                            <span class="text-sm font-bold text-slate-600">Credit grade</span>
+                                            <select class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100" name="loan_grade" required>
+                                                <option value="A" {% if request.POST.loan_grade == "A" %}selected{% endif %}>A</option>
+                                                <option value="B" {% if request.POST.loan_grade == "B" %}selected{% endif %}>B</option>
+                                                <option value="C" {% if request.POST.loan_grade == "C" %}selected{% endif %}>C</option>
+                                                <option value="D" {% if request.POST.loan_grade == "D" %}selected{% endif %}>D</option>
+                                                <option value="E" {% if request.POST.loan_grade == "E" %}selected{% endif %}>E</option>
+                                                <option value="F" {% if request.POST.loan_grade == "F" %}selected{% endif %}>F</option>
+                                                <option value="G" {% if request.POST.loan_grade == "G" %}selected{% endif %}>G</option>
+                                            </select>
+                                        </label>
+
+                                        <label class="grid gap-2">
+                                            <span class="text-sm font-bold text-slate-600">Loan amount</span>
+                                            <input class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100" type="number" name="loan_amnt" min="0" step="any" value="{{ request.POST.loan_amnt }}" placeholder="VD: 12000" required>
+                                        </label>
+
+                                        <label class="grid gap-2">
+                                            <span class="text-sm font-bold text-slate-600">Interest rate (%)</span>
+                                            <input class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100" type="number" name="int_rate" min="0" max="100" step="0.01" value="{{ request.POST.int_rate }}" placeholder="VD: 11.50" required>
+                                        </label>
+
+                                        <label class="grid gap-2">
+                                            <span class="text-sm font-bold text-slate-600">Loan-to-income ratio</span>
+                                            <input class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100" type="number" name="loan_percent_income" min="0" max="1" step="0.01" value="{{ request.POST.loan_percent_income }}" placeholder="VD: 0.18" required>
+                                        </label>
+
+                                        <label class="grid gap-2">
+                                            <span class="text-sm font-bold text-slate-600">Previous default</span>
+                                            <select class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100" name="default_on_file" required>
+                                                <option value="N" {% if request.POST.default_on_file == "N" %}selected{% endif %}>N</option>
+                                                <option value="Y" {% if request.POST.default_on_file == "Y" %}selected{% endif %}>Y</option>
+                                            </select>
+                                        </label>
+
+                                        <label class="grid gap-2 sm:col-span-2">
+                                            <span class="text-sm font-bold text-slate-600">Credit history length</span>
+                                            <input class="min-h-11 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100" type="number" name="cred_hist_length" min="0" max="50" step="1" value="{{ request.POST.cred_hist_length }}" placeholder="VD: 6" required>
+                                        </label>
+                                    </div>
+
+                                    <div class="flex flex-col gap-3 sm:flex-row">
+                                        <button class="min-h-11 rounded-lg bg-teal-700 px-6 py-2 font-black text-white transition hover:bg-teal-800 focus:outline-none focus:ring-4 focus:ring-teal-200" type="submit">
+                                            Predict
+                                        </button>
+                                        <button class="min-h-11 rounded-lg border border-slate-300 bg-white px-6 py-2 font-black text-slate-700 transition hover:border-slate-500" type="reset">
+                                            Reset
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <aside class="rounded-lg border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
+                                <div class="mb-5">
+                                    <p class="text-xs font-bold uppercase tracking-normal text-teal-700">Results</p>
+                                    <h2 class="text-2xl font-black tracking-normal text-slate-950">Profile classification</h2>
+                                </div>
+
+                                {% if predictions_results %}
+                                    <div class="grid gap-4 md:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+                                        {% for model_name, data in predictions_results.items %}
+                                            {% if data.risk >= 50.0 or data.label == "Default" %}
+                                                <article class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-600">
+                                            {% else %}
+                                                <article class="rounded-lg border border-green-200 bg-green-50 p-4 text-green-600">
+                                            {% endif %}
+                                                    <div class="flex min-h-full flex-col items-center justify-between gap-4 text-center">
+                                                        <div>
+                                                            <h3 class="text-sm font-black uppercase tracking-normal">{{ model_name|upper }}</h3>
+                                                            <p class="mt-1 text-xs font-semibold opacity-75">Risk score</p>
+                                                        </div>
+
+                                                        <div class="grid size-32 place-items-center rounded-full p-2 shadow-inner" style="background: conic-gradient(currentColor 0deg, currentColor {{ data.risk|floatformat:1 }}%, transparent 0%); background-size: 100% 100%;">
+                                                            <div class="grid size-full place-items-center rounded-full bg-white text-slate-950">
+                                                                <div>
+                                                                    <strong class="block text-3xl font-black">{{ data.risk|floatformat:1 }}%</strong>
+                                                                    <span class="text-xs font-bold text-slate-500">default</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {% if data.risk >= 50.0 or data.label == "Default" %}
+                                                            <div class="w-full rounded-lg border border-red-200 bg-white px-3 py-3">
+                                                                <span class="block text-xl font-black text-red-700">{{ data.label }}</span>
+                                                                <small class="font-bold text-red-500">High Risk / Reject</small>
+                                                            </div>
+                                                        {% else %}
+                                                            <div class="w-full rounded-lg border border-green-200 bg-white px-3 py-3">
+                                                                <span class="block text-xl font-black text-green-700">{{ data.label }}</span>
+                                                                <small class="font-bold text-green-500">Safe / Approved</small>
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </article>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="grid min-h-[420px] place-items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                                        <div class="mx-auto max-w-md">
+                                            <div class="mx-auto grid size-16 place-items-center rounded-full bg-white text-3xl shadow-sm">+</div>
+                                            <p class="mt-5 text-base font-semibold leading-7 text-slate-600">
+                                                Enter the complete profile and click <span class="font-black text-teal-700">'Predict'</span> to compare the three models in real time.
+                                            </p>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </aside>
+                        </div>
+                    </section>
+
+                    <section class="page-view hidden" data-page="analytics">
+                        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
+                            <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                                <div>
+                                    <p class="text-xs font-bold uppercase tracking-normal text-teal-700">Static analytics</p>
+                                    <h2 class="text-2xl font-black tracking-normal text-slate-950">Model analysis reports</h2>
+                                </div>
+                                <p class="max-w-xl text-sm font-medium text-slate-500">
+                                    These charts are generated by the offline training and evaluation pipeline.
+                                </p>
+                            </div>
+
+                            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                <article class="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                    <img class="h-64 w-full bg-white object-contain p-3" src="{% static 'images/confusion_matrix_knn.png' %}" alt="Confusion matrix KNN">
+                                    <div class="border-t border-slate-200 bg-white p-4">
+                                        <h3 class="font-black text-slate-950">Confusion Matrix KNN</h3>
+                                        <p class="mt-1 text-sm text-slate-500">KNN confusion matrix.</p>
+                                    </div>
+                                </article>
+
+                                <article class="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                    <img class="h-64 w-full bg-white object-contain p-3" src="{% static 'images/confusion_matrix_linear.png' %}" alt="Confusion matrix Linear Regression">
+                                    <div class="border-t border-slate-200 bg-white p-4">
+                                        <h3 class="font-black text-slate-950">Confusion Matrix Linear</h3>
+                                        <p class="mt-1 text-sm text-slate-500">Linear Regression confusion matrix.</p>
+                                    </div>
+                                </article>
+
+                                <article class="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                    <img class="h-64 w-full bg-white object-contain p-3" src="{% static 'images/confusion_matrix_logistic.png' %}" alt="Confusion matrix Logistic Regression">
+                                    <div class="border-t border-slate-200 bg-white p-4">
+                                        <h3 class="font-black text-slate-950">Confusion Matrix Logistic</h3>
+                                        <p class="mt-1 text-sm text-slate-500">Logistic Regression confusion matrix.</p>
+                                    </div>
+                                </article>
+
+                                <article class="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                    <img class="h-64 w-full bg-white object-contain p-3" src="{% static 'images/comparison_80_20_chart.png' %}" alt="Comparison chart">
+                                    <div class="border-t border-slate-200 bg-white p-4">
+                                        <h3 class="font-black text-slate-950">Model Comparison</h3>
+                                        <p class="mt-1 text-sm text-slate-500">Accuracy, Precision, Recall, and F1-score comparison.</p>
+                                    </div>
+                                </article>
+
+                                <article class="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                    <img class="h-64 w-full bg-white object-contain p-3" src="{% static 'images/roc_curve_comparison.png' %}" alt="ROC curve comparison">
+                                    <div class="border-t border-slate-200 bg-white p-4">
+                                        <h3 class="font-black text-slate-950">ROC Curve</h3>
+                                        <p class="mt-1 text-sm text-slate-500">ROC curves and AUC values for all models.</p>
+                                    </div>
+                                </article>
+
+                                <article class="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                                    <img class="h-64 w-full bg-white object-contain p-3" src="{% static 'images/feature_importance_logistic.png' %}" alt="Feature importance Logistic Regression">
+                                    <div class="border-t border-slate-200 bg-white p-4">
+                                        <h3 class="font-black text-slate-950">Feature Importance</h3>
+                                        <p class="mt-1 text-sm text-slate-500">Logistic Regression feature importance.</p>
+                                    </div>
+                                </article>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+
+        <footer class="border-t border-slate-200 bg-white px-4 py-2 sm:px-6">
+            <div class="flex flex-col gap-1 text-xs font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                <span>Credit Risk Lab dashboard</span>
+                <span>Fixed header, sidebar, and footer; only the page content scrolls.</span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        (() => {
+            const pageViews = Array.from(document.querySelectorAll(".page-view"));
+            const navItems = Array.from(document.querySelectorAll(".nav-item, [data-page-target]"));
+            const scrollArea = document.querySelector("#page-scroll");
+
+            const setActivePage = (pageName) => {
+                pageViews.forEach((view) => {
+                    view.classList.toggle("hidden", view.dataset.page !== pageName);
+                });
+
+                navItems.forEach((item) => {
+                    const isActive = item.dataset.pageTarget === pageName;
+                    item.classList.toggle("bg-teal-700", isActive);
+                    item.classList.toggle("text-white", isActive);
+                    item.classList.toggle("border-teal-700", isActive);
+                    item.classList.toggle("text-slate-700", !isActive);
+                });
+
+                if (scrollArea) {
+                    scrollArea.scrollTop = 0;
+                }
+            };
+
+            navItems.forEach((item) => {
+                item.addEventListener("click", () => setActivePage(item.dataset.pageTarget));
+            });
+
+            setActivePage("{% if predictions_results %}prediction{% else %}overview{% endif %}");
+        })();
+    </script>
+</body>
+</html>
